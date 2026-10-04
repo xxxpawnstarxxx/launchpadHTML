@@ -109,6 +109,12 @@ export function classifyFailure({ project, exitCode, logTail = '' }) {
   //    wasn't used → still an install/PATH problem. If node_modules exists,
   //    treat as needs-install (partial install); otherwise needs-env.
   if (notRecognized) {
+    if (project.type === 'html5-static') {
+      return {
+        status: 'needs-env',
+        reason: 'Node.js is required to serve static HTML (npx not found).',
+      };
+    }
     // Python tooling not on PATH (uvicorn / python) → needs-env.
     if (/uvicorn|python|uv\b/.test(tail)) {
       return {

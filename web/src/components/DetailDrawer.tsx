@@ -217,6 +217,24 @@ export function DetailDrawer(props: Props) {
             </section>
           )}
 
+          {/* HTML files for static sites */}
+          {p.type === 'html5-static' && p.htmlFiles && p.htmlFiles.length > 0 && (
+            <section className="panel html-files-panel">
+              <div className="panel-head">Pages</div>
+              <div className="panel-body">
+                <ul className="html-files-list" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {p.htmlFiles.map(f => (
+                    <li key={f}>
+                      <a href={`http://127.0.0.1:${p.assignedPort}/${f}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', textDecoration: 'none' }}>
+                        {f}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
+
           {/* Crash recovery. Opt-in, and until now only reachable by editing a
               JSON file by hand — which meant almost nobody would ever find it. */}
           {p.runnable && (

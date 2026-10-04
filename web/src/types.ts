@@ -91,6 +91,9 @@ export interface Project {
 
   // ---- subprojects ----
   subprojects: SubProject[];
+
+  // ---- HTML files (html5-static projects) ----
+  htmlFiles?: string[];
 }
 
 // ---- REST response shapes (SPEC §2) ----

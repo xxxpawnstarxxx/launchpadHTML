@@ -343,12 +343,12 @@ function classifyLeaf(dir) {
     framework = 'Vanilla ES modules';
     const m = (scripts.dev || '').match(/-l\s+(\d+)/);
     defaultPort = m ? Number(m[1]) : 5173;
-  } else if (!pkg && has(dir, 'index.html')) {
+  } else if (!pkg && (has(dir, 'index.html') || hasHtmlFiles(dir))) {
     type = 'html5-static';
     framework = 'Static HTML/CSS/JS';
     runnable = true;
     defaultPort = 8000;
-  } else if (pkg && !devCommand && has(dir, 'index.html')) {
+  } else if (pkg && !devCommand && (has(dir, 'index.html') || hasHtmlFiles(dir))) {
     // A package.json with NO recognizable server framework and NO dev/start
     // script, but an index.html at the root, is a static site that merely keeps
     // a manifest (e.g. for a build dep or metadata). Serve it like any static
@@ -574,6 +574,7 @@ function detectProject(dir, id) {
     packageManager: leaf.packageManager || 'npm',
     subprojects,
     repoUrl: readRepoUrl(dir),
+    htmlFiles: leaf.type === 'html5-static' ? getHtmlFiles(dir) : [],
   };
 }
 
@@ -621,6 +622,18 @@ function isGitWorktree(dir) {
   }
 }
 
+function getHtmlFiles(dir) {
+  try {
+    return fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.html')).sort();
+  } catch {
+    return [];
+  }
+}
+
+function hasHtmlFiles(dir) {
+  return getHtmlFiles(dir).length > 0;
+}
+
 /**
  * Generic gate (no name matching): should this directory be listed as a project
  * at all? Skip git worktrees; otherwise require either an own `.git` repo dir or
@@ -631,7 +644,8 @@ function isGitWorktree(dir) {
 function isProjectDir(dir) {
   if (isGitWorktree(dir)) return false;
   if (isDir(path.join(dir, '.git'))) return true; // an intentional repo root
-  return PROJECT_MARKERS.some((m) => has(dir, m));
+  if (PROJECT_MARKERS.some((m) => has(dir, m))) return true;
+  return hasHtmlFiles(dir);
 }
 
 /**
@@ -662,7 +676,29 @@ export function scanFilesystem(projectsRoot, opts = {}) {
       return;
     }
     for (const ent of entries) {
-      if (!ent.isDirectory()) continue;
+      if (!ent.isDirectory()) {
+        if (ent.isFile() && ent.name.toLowerCase().endsWith('.html')) {
+          const childTrail = [...trail, ent.name.replace(/\.html$/i, '')];
+          const id = childTrail.map(folderToId).join('-');
+          out.push({
+            id,
+            folder: ent.name,
+            name: childTrail.join('/'),
+            path: dir,
+            type: 'html5-static',
+            typeGroup: 'Static',
+            framework: 'Static HTML',
+            repoUrl: null,
+            runnable: true,
+            discoveredCommand: null,
+            defaultPort: 8000,
+            packageManager: 'npm',
+            subprojects: [],
+            htmlFiles: [ent.name],
+          });
+        }
+        continue;
+      }
       if (ent.name.startsWith('.')) continue; // hidden/dot dirs (.claude, .vscode, .idea, .git)
       if (SKIP_DIRS.has(ent.name)) continue;
       if (ent.name.endsWith('.git')) continue; // bare repo backups
@@ -701,6 +737,7 @@ export function scanFilesystem(projectsRoot, opts = {}) {
         defaultPort: det.defaultPort,
         packageManager: det.packageManager,
         subprojects: det.subprojects,
+        htmlFiles: det.htmlFiles,
       });
       // A project's own subfolders are handled by detectSubprojects — never
       // descend into one, or a monorepo would explode into dozens of cards.
